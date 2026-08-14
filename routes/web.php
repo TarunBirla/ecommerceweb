@@ -1,0 +1,96 @@
+<?php
+
+use App\Http\Controllers\Admin\AdminCouponController;
+use App\Http\Controllers\Admin\AdminCustomerController;
+use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AdminInventoryController;
+use App\Http\Controllers\Admin\AdminOrderController;
+use App\Http\Controllers\Admin\AdminProductController;
+use App\Http\Controllers\Admin\AdminSettingController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CartWishlistController;
+use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\CustomerAccountController;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\ProductCatalogController;
+use Illuminate\Support\Facades\Route;
+
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+*/
+
+// Homepage & Catalog
+Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::get('/products', [ProductCatalogController::class, 'index'])->name('products.index');
+Route::get('/products/search', [ProductCatalogController::class, 'liveSearch'])->name('products.search');
+Route::get('/products/{slug}', [ProductCatalogController::class, 'show'])->name('products.show');
+
+// Cart Routes
+Route::get('/cart', [CartWishlistController::class, 'viewCart'])->name('cart.index');
+Route::post('/cart/add', [CartWishlistController::class, 'addToCart'])->name('cart.add');
+Route::post('/cart/update/{id}', [CartWishlistController::class, 'updateCart'])->name('cart.update');
+Route::post('/cart/remove/{id}', [CartWishlistController::class, 'removeCartItem'])->name('cart.remove');
+
+// Authentication Routes
+Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+Route::post('/login', [AuthController::class, 'login']);
+Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+// Customer Protected Routes
+Route::middleware(['auth'])->group(function () {
+    // Checkout Flow
+    Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
+    Route::post('/checkout/coupon/verify', [CheckoutController::class, 'verifyCoupon'])->name('checkout.coupon.verify');
+    Route::post('/checkout/place', [CheckoutController::class, 'placeOrder'])->name('checkout.place');
+    Route::post('/checkout/payment/verify', [CheckoutController::class, 'verifyPayment'])->name('checkout.payment.verify');
+    Route::get('/checkout/confirmation/{order_number}', [CheckoutController::class, 'confirmation'])->name('checkout.confirmation');
+
+    // Customer Account & History
+    Route::get('/account', [CustomerAccountController::class, 'dashboard'])->name('account.dashboard');
+    Route::get('/account/orders', [CustomerAccountController::class, 'orders'])->name('account.orders');
+    Route::get('/account/orders/{order_number}', [CustomerAccountController::class, 'orderDetails'])->name('account.orders.details');
+    Route::post('/account/orders/{order_number}/return', [CustomerAccountController::class, 'requestReturn'])->name('account.orders.return');
+    Route::get('/account/invoice/{order_number}', [CustomerAccountController::class, 'downloadInvoice'])->name('account.invoice.download');
+    Route::get('/account/profile', [CustomerAccountController::class, 'profile'])->name('account.profile');
+    Route::post('/account/profile', [CustomerAccountController::class, 'updateProfile'])->name('account.profile.update');
+    Route::get('/account/addresses', [CustomerAccountController::class, 'addresses'])->name('account.addresses');
+    Route::post('/account/addresses', [CustomerAccountController::class, 'storeAddress'])->name('account.addresses.store');
+    Route::post('/account/addresses/{id}/delete', [CustomerAccountController::class, 'deleteAddress'])->name('account.addresses.delete');
+    
+    // Wishlist & Reviews
+    Route::get('/account/wishlist', [CartWishlistController::class, 'viewWishlist'])->name('account.wishlist');
+    Route::post('/account/wishlist/toggle', [CartWishlistController::class, 'toggleWishlist'])->name('account.wishlist.toggle');
+    Route::post('/account/review', [CustomerAccountController::class, 'submitReview'])->name('account.review.submit');
+});
+
+// Admin Panel Protected Routes
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
+
+    // Orders Management
+    Route::get('/orders', [AdminOrderController::class, 'index'])->name('orders.index');
+    Route::get('/orders/{id}', [AdminOrderController::class, 'show'])->name('orders.show');
+    Route::post('/orders/{id}/update-status', [AdminOrderController::class, 'updateStatus'])->name('orders.update-status');
+
+    // Products Management
+    Route::resource('products', AdminProductController::class);
+
+    // Inventory Audit
+    Route::get('/inventory', [AdminInventoryController::class, 'index'])->name('inventory.index');
+    Route::post('/inventory/adjust', [AdminInventoryController::class, 'adjust'])->name('inventory.adjust');
+
+    // Coupons
+    Route::resource('coupons', AdminCouponController::class)->only(['index', 'store', 'destroy']);
+
+    // Customers
+    Route::get('/customers', [AdminCustomerController::class, 'index'])->name('customers.index');
+    Route::post('/customers/{id}/block', [AdminCustomerController::class, 'toggleBlock'])->name('customers.block');
+
+    // Settings
+    Route::get('/settings', [AdminSettingController::class, 'index'])->name('settings.index');
+    Route::post('/settings', [AdminSettingController::class, 'update'])->name('settings.update');
+});

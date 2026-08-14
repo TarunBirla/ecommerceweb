@@ -1,0 +1,171 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Address;
+use App\Models\Cart;
+use App\Models\Coupon;
+use App\Models\CouponUsage;
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\OrderStatusHistory;
+use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Models\ShippingMethod;
+use App\Models\User;
+use Exception;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+
+class OrderService
+{
+    protected InventoryService $inventoryService;
+
+    public function __construct(InventoryService $inventoryService)
+    {
+        $this->inventoryService = $inventoryService;
+    }
+
+    /**
+     * Create Order with server-side validation and DB transaction
+     */
+    public function createOrder(User $user, int $addressId, int $shippingMethodId, ?string $couponCode = null, string $paymentMethod = 'razorpay', ?string $customerNote = null): Order
+    {
+        return DB::transaction(function () use ($user, $addressId, $shippingMethodId, $couponCode, $paymentMethod, $customerNote) {
+            // 1. Get Address
+            $address = Address::where('id', $addressId)->where('user_id', $user->id)->firstOrFail();
+            $addressSnapshot = $address->toArray();
+
+            // 2. Get Cart & Items
+            $cart = Cart::with('items.product', 'items.variant')->where('user_id', $user->id)->first();
+            if (!$cart || $cart->items->isEmpty()) {
+                throw new Exception('Your shopping cart is empty.');
+            }
+
+            // 3. Revalidate every item stock & price server-side
+            $subtotal = 0.00;
+            $itemsToProcess = [];
+
+            foreach ($cart->items as $item) {
+                $product = Product::find($item->product_id);
+                if (!$product || !$product->is_active) {
+                    throw new Exception("Product '{$item->product->name}' is no longer available.");
+                }
+
+                $variant = $item->variant_id ? ProductVariant::find($item->variant_id) : null;
+                $currentStock = $variant ? $variant->stock : $product->stock;
+
+                if ($currentStock < $item->quantity) {
+                    $name = $variant ? "{$product->name} ({$variant->variant_name})" : $product->name;
+                    throw new Exception("Insufficient stock for '{$name}'. Available: {$currentStock}, requested: {$item->quantity}.");
+                }
+
+                $unitPrice = $variant ? $variant->effective_price : $product->effective_price;
+                $itemSubtotal = $unitPrice * $item->quantity;
+                $subtotal += $itemSubtotal;
+
+                $itemsToProcess[] = [
+                    'product_id' => $product->id,
+                    'variant_id' => $variant ? $variant->id : null,
+                    'product_name' => $product->name,
+                    'variant_name' => $variant ? $variant->variant_name : null,
+                    'sku' => $variant ? $variant->sku : $product->sku,
+                    'product_image' => $variant && $variant->image ? $variant->image : ($product->primaryImage ? $product->primaryImage->image_path : null),
+                    'unit_price' => $unitPrice,
+                    'quantity' => $item->quantity,
+                    'subtotal' => $itemSubtotal,
+                ];
+            }
+
+            // 4. Validate Shipping Method & Calculate Fee
+            $shippingMethod = ShippingMethod::findOrFail($shippingMethodId);
+            $shippingFee = $shippingMethod->cost;
+            if ($shippingMethod->free_shipping_threshold && $subtotal >= $shippingMethod->free_shipping_threshold) {
+                $shippingFee = 0.00;
+            }
+
+            // 5. Validate Coupon Code server-side
+            $discountAmount = 0.00;
+            $appliedCoupon = null;
+            if ($couponCode) {
+                $coupon = Coupon::where('code', strtoupper($couponCode))->first();
+                if ($coupon) {
+                    $validation = $coupon->isValidForOrder($subtotal, $user->id);
+                    if ($validation['valid']) {
+                        $discountAmount = $validation['discount'];
+                        $appliedCoupon = $coupon;
+                    } else {
+                        throw new Exception($validation['message']);
+                    }
+                } else {
+                    throw new Exception("Invalid coupon code '{$couponCode}'.");
+                }
+            }
+
+            // 6. Tax calculation (18% GST if enabled in settings, or standard breakdown)
+            $taxAmount = round(($subtotal - $discountAmount) * 0.18, 2);
+            $grandTotal = round(($subtotal - $discountAmount) + $shippingFee + $taxAmount, 2);
+
+            // 7. Generate Unique Order Number
+            $orderNumber = 'ORD-' . date('Ymd') . '-' . strtoupper(Str::random(5));
+
+            // 8. Create Order Record
+            $order = Order::create([
+                'order_number' => $orderNumber,
+                'user_id' => $user->id,
+                'shipping_address_id' => $address->id,
+                'shipping_address_json' => $addressSnapshot,
+                'order_status' => 'pending',
+                'payment_status' => 'unpaid',
+                'payment_method' => $paymentMethod,
+                'subtotal' => $subtotal,
+                'discount_amount' => $discountAmount,
+                'coupon_code' => $appliedCoupon ? $appliedCoupon->code : null,
+                'shipping_fee' => $shippingFee,
+                'tax_amount' => $taxAmount,
+                'grand_total' => $grandTotal,
+                'customer_note' => $customerNote,
+            ]);
+
+            // 9. Create Order Items & Deduct Stock
+            foreach ($itemsToProcess as $itemData) {
+                $itemData['order_id'] = $order->id;
+                OrderItem::create($itemData);
+
+                // Deduct stock & audit log
+                $this->inventoryService->adjustStock(
+                    $itemData['product_id'],
+                    $itemData['variant_id'],
+                    -$itemData['quantity'],
+                    'sale',
+                    $order->order_number,
+                    "Stock reduced for Order #{$order->order_number}"
+                );
+            }
+
+            // 10. Record Coupon Usage
+            if ($appliedCoupon) {
+                CouponUsage::create([
+                    'coupon_id' => $appliedCoupon->id,
+                    'user_id' => $user->id,
+                    'order_id' => $order->id,
+                    'discount_amount' => $discountAmount,
+                ]);
+                $appliedCoupon->increment('used_count');
+            }
+
+            // 11. Record Order Status History
+            OrderStatusHistory::create([
+                'order_id' => $order->id,
+                'status' => 'pending',
+                'notes' => 'Order created and pending payment authorization.',
+                'changed_by' => $user->id,
+            ]);
+
+            // 12. Clear Cart
+            $cart->items()->delete();
+
+            return $order;
+        });
+    }
+}

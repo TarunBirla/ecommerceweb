@@ -1,0 +1,142 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Address;
+use App\Models\Order;
+use App\Models\ReturnRequest;
+use App\Models\Review;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+
+class CustomerAccountController extends Controller
+{
+    public function dashboard()
+    {
+        $user = Auth::user();
+        $recentOrders = Order::with('items')->where('user_id', $user->id)->latest()->take(5)->get();
+        $totalOrdersCount = Order::where('user_id', $user->id)->count();
+        $totalSpent = Order::where('user_id', $user->id)->where('payment_status', 'paid')->sum('grand_total');
+
+        return view('account.dashboard', compact('user', 'recentOrders', 'totalOrdersCount', 'totalSpent'));
+    }
+
+    public function profile()
+    {
+        $user = Auth::user();
+        return view('account.profile', compact('user'));
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $user = Auth::user();
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'phone' => 'required|string|max:20|unique:users,phone,' . $user->id,
+            'date_of_birth' => 'nullable|date',
+            'gender' => 'nullable|in:male,female,other',
+        ]);
+
+        $user->update($request->only('name', 'phone', 'date_of_birth', 'gender'));
+        return back()->with('success', 'Profile updated successfully.');
+    }
+
+    public function addresses()
+    {
+        $addresses = Address::where('user_id', Auth::id())->get();
+        return view('account.addresses', compact('addresses'));
+    }
+
+    public function storeAddress(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string',
+            'phone' => 'required|string',
+            'address_line_1' => 'required|string',
+            'city' => 'required|string',
+            'state' => 'required|string',
+            'pincode' => 'required|string',
+            'address_type' => 'required|in:home,work,other',
+        ]);
+
+        if ($request->has('is_default')) {
+            Address::where('user_id', Auth::id())->update(['is_default' => false]);
+        }
+
+        Address::create(array_merge($request->all(), [
+            'user_id' => Auth::id(),
+            'is_default' => $request->has('is_default')
+        ]));
+
+        return back()->with('success', 'Address added successfully.');
+    }
+
+    public function deleteAddress($id)
+    {
+        Address::where('id', $id)->where('user_id', Auth::id())->delete();
+        return back()->with('success', 'Address deleted.');
+    }
+
+    public function orders()
+    {
+        $orders = Order::with('items.product.primaryImage')->where('user_id', Auth::id())->latest()->paginate(10);
+        return view('account.orders', compact('orders'));
+    }
+
+    public function orderDetails(string $orderNumber)
+    {
+        $order = Order::with(['items.product', 'items.variant', 'statusHistories'])->where('order_number', $orderNumber)->where('user_id', Auth::id())->firstOrFail();
+        return view('account.order_details', compact('order'));
+    }
+
+    public function downloadInvoice(string $orderNumber)
+    {
+        $order = Order::with(['items', 'user'])->where('order_number', $orderNumber)->firstOrFail();
+        return view('invoices.invoice_pdf', compact('order'));
+    }
+
+    public function submitReview(Request $request)
+    {
+        $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'rating' => 'required|integer|between:1,5',
+            'title' => 'nullable|string',
+            'comment' => 'required|string',
+        ]);
+
+        Review::create([
+            'user_id' => Auth::id(),
+            'product_id' => $request->product_id,
+            'rating' => $request->rating,
+            'title' => $request->title,
+            'comment' => $request->comment,
+            'is_verified_purchase' => true,
+            'status' => 'approved',
+        ]);
+
+        return back()->with('success', 'Thank you for your review!');
+    }
+
+    public function requestReturn(Request $request, string $orderNumber)
+    {
+        $order = Order::where('order_number', $orderNumber)->where('user_id', Auth::id())->firstOrFail();
+        
+        $request->validate([
+            'reason' => 'required|string',
+            'description' => 'required|string',
+        ]);
+
+        ReturnRequest::create([
+            'order_id' => $order->id,
+            'user_id' => Auth::id(),
+            'reason' => $request->reason,
+            'description' => $request->description,
+            'status' => 'requested',
+            'refund_amount' => $order->grand_total,
+        ]);
+
+        $order->update(['order_status' => 'return_requested']);
+
+        return back()->with('success', 'Return request submitted. Our team will contact you shortly.');
+    }
+}

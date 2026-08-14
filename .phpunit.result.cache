@@ -1,0 +1,1 @@
+{"version":2,"defects":[],"times":{"Tests\\Feature\\ECommercePlatformTest::test_customer_can_browse_homepage_and_catalog":14.937,"Tests\\Feature\\ECommercePlatformTest::test_coupon_validation":0.835,"Tests\\Feature\\ECommercePlatformTest::test_order_creation_reduces_stock_and_logs_audit":3.891}}
