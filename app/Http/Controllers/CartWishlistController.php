@@ -27,12 +27,22 @@ class CartWishlistController extends Controller
 
     public function viewCart(Request $request)
     {
+        if (!Auth::check()) {
+            return redirect()->route('login')->with('error', 'Please login to view your shopping cart.');
+        }
         $cart = $this->getCart($request)->load('items.product.primaryImage', 'items.variant');
         return view('cart.index', compact('cart'));
     }
 
     public function addToCart(Request $request)
     {
+        if (!Auth::check()) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Please login to add items to cart.', 'redirect' => route('login')], 401);
+            }
+            return redirect()->route('login')->with('error', 'Please login to add items to your cart.');
+        }
+
         $request->validate([
             'product_id' => 'required|exists:products,id',
             'variant_id' => 'nullable|exists:product_variants,id',
@@ -45,7 +55,10 @@ class CartWishlistController extends Controller
         // Stock check
         $stock = $variant ? $variant->stock : $product->stock;
         if ($stock < $request->quantity) {
-            return response()->json(['success' => false, 'message' => "Only {$stock} items left in stock."], 422);
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => "Only {$stock} items left in stock."], 422);
+            }
+            return back()->with('error', "Only {$stock} items left in stock.");
         }
 
         $cart = $this->getCart($request);
@@ -57,32 +70,31 @@ class CartWishlistController extends Controller
             ->first();
 
         if ($cartItem) {
-            $newQty = $cartItem->quantity + $request->quantity;
-            if ($stock < $newQty) {
-                return response()->json(['success' => false, 'message' => "Cannot add more. Maximum available stock is {$stock}."], 422);
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => "{$product->name} is already in your cart."], 422);
             }
-            $cartItem->update(['quantity' => $newQty, 'unit_price' => $unitPrice]);
-        } else {
-            CartItem::create([
-                'cart_id' => $cart->id,
-                'product_id' => $product->id,
-                'variant_id' => $request->variant_id,
-                'quantity' => $request->quantity,
-                'unit_price' => $unitPrice,
-            ]);
+            return back()->with('error', "{$product->name} is already in your cart.");
         }
+
+        CartItem::create([
+            'cart_id' => $cart->id,
+            'product_id' => $product->id,
+            'variant_id' => $request->variant_id,
+            'quantity' => $request->quantity,
+            'unit_price' => $unitPrice,
+        ]);
 
         $totalItems = $cart->items()->sum('quantity');
 
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => "Added {$product->name} to cart!",
+                'message' => "Added {$product->name} to cart successfully!",
                 'cart_count' => $totalItems
             ]);
         }
 
-        return redirect()->route('cart.index')->with('success', 'Item added to cart!');
+        return back()->with('success', "{$product->name} added to cart successfully!");
     }
 
     public function updateCart(Request $request, $itemId)
@@ -109,6 +121,9 @@ class CartWishlistController extends Controller
 
     public function viewWishlist()
     {
+        if (!Auth::check()) {
+            return redirect()->route('login')->with('error', 'Please login to view your wishlist.');
+        }
         $wishlists = Wishlist::with('product.primaryImage')->where('user_id', Auth::id())->get();
         return view('account.wishlist', compact('wishlists'));
     }
@@ -118,7 +133,10 @@ class CartWishlistController extends Controller
         $request->validate(['product_id' => 'required|exists:products,id']);
 
         if (!Auth::check()) {
-            return response()->json(['success' => false, 'message' => 'Please login to save wishlist.'], 401);
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Please login to save wishlist.', 'redirect' => route('login')], 401);
+            }
+            return redirect()->route('login')->with('error', 'Please login to save items to your wishlist.');
         }
 
         $wishlist = Wishlist::where('user_id', Auth::id())
@@ -135,8 +153,11 @@ class CartWishlistController extends Controller
             $msg = 'Added to wishlist!';
         }
 
-        $count = Wishlist::where('user_id', Auth::id())->count();
+        if ($request->wantsJson()) {
+            $count = Wishlist::where('user_id', Auth::id())->count();
+            return response()->json(['success' => true, 'added' => $added, 'message' => $msg, 'count' => $count]);
+        }
 
-        return response()->json(['success' => true, 'added' => $added, 'message' => $msg, 'count' => $count]);
+        return back()->with('success', $msg);
     }
 }

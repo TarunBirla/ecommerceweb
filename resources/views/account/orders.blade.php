@@ -28,7 +28,7 @@
                             <th>Status</th>
                             <th>Payment</th>
                             <th>Total</th>
-                            <th>Action</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -40,7 +40,16 @@
                                 <td><span class="badge-status {{ $order->payment_status == 'paid' ? 'badge-success' : 'badge-warning' }}">{{ strtoupper($order->payment_status) }}</span></td>
                                 <td style="font-weight: 700;">£{{ number_format($order->grand_total, 2) }}</td>
                                 <td>
-                                    <a href="{{ route('account.orders.details', $order->order_number) }}" class="btn btn-outline btn-sm">Track & Details</a>
+                                    <div style="display: flex; gap: 6px;">
+                                        <a href="{{ route('account.orders.details', $order->order_number) }}" class="btn btn-outline btn-sm" style="padding: 4px 10px;">
+                                            Track & Details
+                                        </a>
+                                        @if(in_array($order->order_status, ['confirmed', 'packed', 'shipped', 'delivered']))
+                                            <a href="{{ route('account.orders.details', $order->order_number) }}" class="btn btn-outline btn-sm" style="color: var(--brass); border-color: var(--brass-2); padding: 4px 10px;">
+                                                ★ Rate Products
+                                            </a>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach

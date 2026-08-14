@@ -49,6 +49,92 @@
     </div>
 </section>
 
+<!-- Split 50/50 Feature Section with Custom Image Slider -->
+<section class="split-feature-section">
+    <div class="split-feature-container">
+        <!-- Left Half: Text Content -->
+        <div>
+            <span class="pro-badge-brass" style="margin-bottom: 16px;">
+                Engineered Craftsmanship
+            </span>
+            <h2 style="font-size: 2.6rem; line-height: 1.2; margin-bottom: 18px; color: var(--ink);">
+                Uncompromising Quality.<br>From Factory Floor to Studio.
+            </h2>
+            <p style="color: var(--ink-soft); font-size: 1.05rem; line-height: 1.7; margin-bottom: 24px;">
+                Whether outfitting a petrochemical refinery with SS316 ANSI flanged valves or delivering studio-grade active noise cancelling acoustics, we maintain zero-tolerance quality benchmarks.
+            </p>
+
+            <ul class="feature-list">
+                <li class="feature-item">
+                    <div class="feature-icon">✓</div>
+                    <div>
+                        <strong style="color: var(--ink); display: block;">ISO 9001 Certified Manufacturing</strong>
+                        <span style="font-size: 0.9rem; color: var(--muted);">Tested for extreme 800 WOG pressure containment.</span>
+                    </div>
+                </li>
+                <li class="feature-item">
+                    <div class="feature-icon">✓</div>
+                    <div>
+                        <strong style="color: var(--ink); display: block;">Sustainable Materials & Brass Alloys</strong>
+                        <span style="font-size: 0.9rem; color: var(--muted);">100% recyclable components and organic heavy canvas fabrics.</span>
+                    </div>
+                </li>
+                <li class="feature-item">
+                    <div class="feature-icon">✓</div>
+                    <div>
+                        <strong style="color: var(--ink); display: block;">Express Global Fulfillment & Logistics</strong>
+                        <span style="font-size: 0.9rem; color: var(--muted);">Real-time tracking timeline with end-to-end AWB assignment.</span>
+                    </div>
+                </li>
+            </ul>
+
+            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                <a href="{{ route('products.index') }}" class="btn btn-primary">
+                    Explore All Collections
+                </a>
+                <a href="{{ route('blog.index') }}" class="btn btn-outline">
+                    Read Engineering Guides
+                </a>
+            </div>
+        </div>
+
+        <!-- Right Half: Interactive Pro Image Slider -->
+        <div x-data="imageSlider()" x-init="startAutoPlay()" class="slider-wrapper">
+            <!-- Slides Loop -->
+            <template x-for="(slide, index) in slides" :key="index">
+                <div x-show="currentIndex === index" 
+                     x-transition:enter="transition ease-out duration-500"
+                     x-transition:enter-start="opacity-0 scale-95"
+                     x-transition:enter-end="opacity-100 scale-100"
+                     x-transition:leave="transition ease-in duration-300"
+                     x-transition:leave-start="opacity-100 scale-100"
+                     x-transition:leave-end="opacity-0 scale-95"
+                     style="position: absolute; inset: 0; width: 100%; height: 100%;">
+                    
+                    <img :src="slide.image" :alt="slide.title" class="slider-slide">
+                    
+                    <div class="slider-caption-overlay">
+                        <span style="font-size: 0.75rem; background: var(--brass); color: var(--white); padding: 3px 10px; border-radius: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;" x-text="slide.tag"></span>
+                        <h3 style="font-size: 1.4rem; color: var(--white); margin-top: 6px;" x-text="slide.title"></h3>
+                        <p style="font-size: 0.88rem; color: rgba(255,255,255,0.8); margin-top: 4px;" x-text="slide.desc"></p>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Navigation Controls -->
+            <button type="button" @click="prevSlide()" class="slider-btn slider-btn-prev" title="Previous Slide">‹</button>
+            <button type="button" @click="nextSlide()" class="slider-btn slider-btn-next" title="Next Slide">›</button>
+
+            <!-- Indicator Dots -->
+            <div class="slider-dots">
+                <template x-for="(slide, index) in slides" :key="index">
+                    <div @click="goToSlide(index)" class="slider-dot" :class="{ 'active': currentIndex === index }"></div>
+                </template>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Categories Section -->
 <section style="max-width: 1320px; margin: 60px auto; padding: 0 24px;">
     <div style="text-align: center; margin-bottom: 40px;">
@@ -111,10 +197,24 @@
 
     <div class="product-grid">
         @foreach($featuredProducts as $product)
+            @php
+                $inCart = in_array($product->id, $userCartProductIds ?? []);
+                $inWishlist = in_array($product->id, $userWishlistProductIds ?? []);
+            @endphp
             <div class="product-card">
                 @if($product->discount_percentage > 0)
                     <span class="badge-discount">{{ $product->discount_percentage }}% OFF</span>
                 @endif
+
+                <!-- Wishlist Toggle Button -->
+                <form action="{{ route('account.wishlist.toggle') }}" method="POST" style="position: absolute; top: 12px; right: 12px; z-index: 5;">
+                    @csrf
+                    <input type="hidden" name="product_id" value="{{ $product->id }}">
+                    <button type="submit" class="btn-wishlist" style="{{ $inWishlist ? 'color: var(--clay); background: var(--white);' : '' }}" title="{{ $inWishlist ? 'Remove from Wishlist' : 'Add to Wishlist' }}">
+                        {{ $inWishlist ? '♥' : '♡' }}
+                    </button>
+                </form>
+
                 <div class="media-wrapper">
                     <img src="{{ $product->primaryImage ? $product->primaryImage->image_path : 'https://via.placeholder.com/400' }}" alt="{{ $product->name }}">
                 </div>
@@ -131,9 +231,22 @@
                             <span class="original-price">£{{ number_format($product->price, 2) }}</span>
                         @endif
                     </div>
-                    <a href="{{ route('products.show', $product->slug) }}" class="btn btn-primary btn-sm btn-block" style="margin-top: 14px;">
-                        View Options
-                    </a>
+
+                    <!-- Single Add to Cart / Added to Cart Button -->
+                    @if($inCart)
+                        <a href="{{ route('cart.index') }}" class="btn btn-outline btn-sm btn-block" style="margin-top: 14px; color: var(--green); border-color: var(--green); background: var(--green-dim);">
+                            ✓ Added in Cart (View Cart)
+                        </a>
+                    @else
+                        <form action="{{ route('cart.add') }}" method="POST" style="margin-top: 14px;">
+                            @csrf
+                            <input type="hidden" name="product_id" value="{{ $product->id }}">
+                            <input type="hidden" name="quantity" value="1">
+                            <button type="submit" class="btn btn-primary btn-sm btn-block">
+                                🛒 Add to Cart
+                            </button>
+                        </form>
+                    @endif
                 </div>
             </div>
         @endforeach
@@ -200,6 +313,53 @@
 
 @section('scripts')
 <script>
+    function imageSlider() {
+        return {
+            currentIndex: 0,
+            autoPlayTimer: null,
+            slides: [
+                {
+                    tag: 'Petchem Engineering',
+                    title: 'High-Pressure Stainless Steel SS316 Valves',
+                    desc: 'Engineered to withstand 800 WOG pressure containment in chemical plants.',
+                    image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=1000'
+                },
+                {
+                    tag: 'Studio Acoustics',
+                    title: 'Active Noise Cancelling Master Headset',
+                    desc: 'Hybrid digital ANC with 40,000Hz sampling rate and 40-hour battery life.',
+                    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1000'
+                },
+                {
+                    tag: 'Handcrafted Apparel',
+                    title: 'Heavyweight Organic Canvas Field Jackets',
+                    desc: 'Tailored using 100% sustainable organic cotton and brass alloy hardware.',
+                    image: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=1000'
+                },
+                {
+                    tag: 'Precision Hardware',
+                    title: 'ANSI Flanged Industrial Pipeline Fittings',
+                    desc: 'Precision machined corrosion-resistant industrial pipeline components.',
+                    image: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=1000'
+                }
+            ],
+            nextSlide() {
+                this.currentIndex = (this.currentIndex + 1) % this.slides.length;
+            },
+            prevSlide() {
+                this.currentIndex = (this.currentIndex - 1 + this.slides.length) % this.slides.length;
+            },
+            goToSlide(index) {
+                this.currentIndex = index;
+            },
+            startAutoPlay() {
+                this.autoPlayTimer = setInterval(() => {
+                    this.nextSlide();
+                }, 4000);
+            }
+        }
+    }
+
     function countdownTimer() {
         return {
             hours: '08',

@@ -6,14 +6,12 @@ use App\Models\Address;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Coupon;
+use App\Models\CouponUsage;
 use App\Models\Order;
 use App\Models\Product;
-use App\Models\ProductVariant;
-use App\Models\Role;
 use App\Models\ShippingMethod;
 use App\Models\User;
 use App\Services\OrderService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ECommercePlatformTest extends TestCase
@@ -29,10 +27,13 @@ class ECommercePlatformTest extends TestCase
 
     public function test_coupon_validation()
     {
+        $customer = User::where('email', 'customer@eccommers.com')->first();
         $coupon = Coupon::where('code', 'WELCOME10')->first();
         $this->assertNotNull($coupon);
 
-        $customer = User::where('email', 'customer@eccommers.com')->first();
+        // Reset coupon usage for test
+        CouponUsage::where('coupon_id', $coupon->id)->where('user_id', $customer->id)->delete();
+
         $validation = $coupon->isValidForOrder(2000.00, $customer->id);
         
         $this->assertTrue($validation['valid']);
@@ -45,8 +46,10 @@ class ECommercePlatformTest extends TestCase
         $product = Product::with('variants')->first();
         $address = Address::where('user_id', $customer->id)->first();
         $shippingMethod = ShippingMethod::first();
+        $coupon = Coupon::where('code', 'WELCOME10')->first();
 
-        $stockBefore = $product->stock;
+        // Reset coupon usage for test
+        CouponUsage::where('coupon_id', $coupon->id)->where('user_id', $customer->id)->delete();
 
         // Setup Cart
         $cart = Cart::firstOrCreate(['user_id' => $customer->id]);

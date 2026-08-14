@@ -41,12 +41,15 @@ class CheckoutController extends Controller
 
     public function verifyCoupon(Request $request)
     {
-        $request->validate(['code' => 'required|string']);
+        $code = strtoupper(trim($request->input('code', '')));
+        if (empty($code)) {
+            return response()->json(['valid' => false, 'discount' => 0, 'message' => 'Please enter a coupon code.']);
+        }
 
         $user = Auth::user();
         $cart = Cart::with('items.product', 'items.variant')->where('user_id', $user->id)->first();
         if (!$cart || $cart->items->isEmpty()) {
-            return response()->json(['success' => false, 'message' => 'Cart is empty.']);
+            return response()->json(['valid' => false, 'discount' => 0, 'message' => 'Cart is empty.']);
         }
 
         $subtotal = $cart->items->sum(function ($item) {
@@ -54,13 +57,17 @@ class CheckoutController extends Controller
             return $unitPrice * $item->quantity;
         });
 
-        $coupon = Coupon::where('code', strtoupper($request->code))->first();
+        $coupon = Coupon::where('code', $code)->first();
         if (!$coupon) {
-            return response()->json(['success' => false, 'message' => 'Invalid coupon code.']);
+            return response()->json(['valid' => false, 'discount' => 0, 'message' => "Invalid coupon code '{$code}'."]);
         }
 
         $validation = $coupon->isValidForOrder($subtotal, $user->id);
-        return response()->json($validation);
+        return response()->json([
+            'valid' => $validation['valid'],
+            'discount' => $validation['discount'] ?? 0,
+            'message' => $validation['message'] ?? 'Coupon response received.'
+        ]);
     }
 
     public function placeOrder(Request $request)

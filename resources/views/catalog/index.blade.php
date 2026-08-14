@@ -102,10 +102,24 @@
             @if($products->count() > 0)
                 <div class="product-grid">
                     @foreach($products as $product)
+                        @php
+                            $inCart = in_array($product->id, $userCartProductIds ?? []);
+                            $inWishlist = in_array($product->id, $userWishlistProductIds ?? []);
+                        @endphp
                         <div class="product-card">
                             @if($product->discount_percentage > 0)
                                 <span class="badge-discount">{{ $product->discount_percentage }}% OFF</span>
                             @endif
+
+                            <!-- Wishlist Toggle Button -->
+                            <form action="{{ route('account.wishlist.toggle') }}" method="POST" style="position: absolute; top: 12px; right: 12px; z-index: 5;">
+                                @csrf
+                                <input type="hidden" name="product_id" value="{{ $product->id }}">
+                                <button type="submit" class="btn-wishlist" style="{{ $inWishlist ? 'color: var(--clay); background: var(--white);' : '' }}" title="{{ $inWishlist ? 'Remove from Wishlist' : 'Add to Wishlist' }}">
+                                    {{ $inWishlist ? '♥' : '♡' }}
+                                </button>
+                            </form>
+
                             <div class="media-wrapper">
                                 <img src="{{ $product->primaryImage ? $product->primaryImage->image_path : 'https://via.placeholder.com/400' }}" alt="{{ $product->name }}">
                             </div>
@@ -122,9 +136,22 @@
                                         <span class="original-price">£{{ number_format($product->price, 2) }}</span>
                                     @endif
                                 </div>
-                                <a href="{{ route('products.show', $product->slug) }}" class="btn btn-primary btn-sm btn-block" style="margin-top: 14px;">
-                                    View Options
-                                </a>
+
+                                <!-- Single Add to Cart / Added to Cart Button -->
+                                @if($inCart)
+                                    <a href="{{ route('cart.index') }}" class="btn btn-outline btn-sm btn-block" style="margin-top: 14px; color: var(--green); border-color: var(--green); background: var(--green-dim);">
+                                        ✓ Added in Cart (View Cart)
+                                    </a>
+                                @else
+                                    <form action="{{ route('cart.add') }}" method="POST" style="margin-top: 14px;">
+                                        @csrf
+                                        <input type="hidden" name="product_id" value="{{ $product->id }}">
+                                        <input type="hidden" name="quantity" value="1">
+                                        <button type="submit" class="btn btn-primary btn-sm btn-block">
+                                            🛒 Add to Cart
+                                        </button>
+                                    </form>
+                                @endif
                             </div>
                         </div>
                     @endforeach

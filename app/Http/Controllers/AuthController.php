@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Cart;
+use App\Models\CartItem;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -16,6 +18,36 @@ class AuthController extends Controller
         return view('auth.login');
     }
 
+    private function mergeGuestCart(Request $request, User $user)
+    {
+        $sessionId = $request->session()->getId();
+        $guestCart = Cart::where('session_id', $sessionId)->first();
+        
+        if ($guestCart && $guestCart->items->count() > 0) {
+            $userCart = Cart::firstOrCreate(['user_id' => $user->id]);
+            
+            foreach ($guestCart->items as $item) {
+                $existingItem = CartItem::where('cart_id', $userCart->id)
+                    ->where('product_id', $item->product_id)
+                    ->where('variant_id', $item->variant_id)
+                    ->first();
+
+                if (!$existingItem) {
+                    CartItem::create([
+                        'cart_id' => $userCart->id,
+                        'product_id' => $item->product_id,
+                        'variant_id' => $item->variant_id,
+                        'quantity' => $item->quantity,
+                        'unit_price' => $item->unit_price,
+                    ]);
+                }
+            }
+
+            $guestCart->items()->delete();
+            $guestCart->delete();
+        }
+    }
+
     public function login(Request $request)
     {
         $credentials = $request->validate([
@@ -24,8 +56,6 @@ class AuthController extends Controller
         ]);
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
-            $request->session()->regenerate();
-            
             $user = Auth::user();
             $user->update(['last_login_at' => now()]);
 
@@ -33,6 +63,11 @@ class AuthController extends Controller
                 Auth::logout();
                 return back()->withErrors(['email' => 'Your account has been blocked by administrator.']);
             }
+
+            // Merge any guest cart items into user's permanent cart
+            $this->mergeGuestCart($request, $user);
+
+            $request->session()->regenerate();
 
             if ($user->isStaff()) {
                 return redirect()->intended(route('admin.dashboard'));
@@ -68,6 +103,9 @@ class AuthController extends Controller
             'role_id' => $customerRole ? $customerRole->id : null,
             'status' => 'active',
         ]);
+
+        // Merge any guest cart items into user's permanent cart
+        $this->mergeGuestCart($request, $user);
 
         Auth::login($user);
 

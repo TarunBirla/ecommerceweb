@@ -4,6 +4,11 @@
 
 @section('content')
 
+@php
+    $inCart = in_array($product->id, $userCartProductIds ?? []);
+    $inWishlist = in_array($product->id, $userWishlistProductIds ?? []);
+@endphp
+
 <div style="max-width: 1320px; margin: 40px auto; padding: 0 24px;" x-data="productDetail()">
     <!-- Breadcrumb -->
     <div style="font-size: 0.88rem; color: var(--muted); margin-bottom: 24px;">
@@ -23,8 +28,8 @@
             <div style="display: flex; gap: 12px; overflow-x: auto;">
                 @foreach($product->images as $img)
                     <div @click="activeImage = '{{ $img->image_path }}'" 
-                         style="width: 80px; height: 80px; border-radius: var(--radius); overflow: hidden; border: 2px solid var(--line); cursor: pointer;"
-                         :style="activeImage === '{{ $img->image_path }}' ? 'border-color: var(--green);' : ''">
+                          style="width: 80px; height: 80px; border-radius: var(--radius); overflow: hidden; border: 2px solid var(--line); cursor: pointer;"
+                          :style="activeImage === '{{ $img->image_path }}' ? 'border-color: var(--green);' : ''">
                         <img src="{{ $img->image_path }}" style="width: 100%; height: 100%; object-fit: cover;">
                     </div>
                 @endforeach
@@ -33,9 +38,21 @@
 
         <!-- Product Details & Variant Picker -->
         <div>
-            <div style="font-size: 0.85rem; color: var(--brass); text-transform: uppercase; font-weight: 700; letter-spacing: 1px; margin-bottom: 6px;">
-                {{ $product->brand ? $product->brand->name : 'Eccommers Exclusive' }}
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div style="font-size: 0.85rem; color: var(--brass); text-transform: uppercase; font-weight: 700; letter-spacing: 1px; margin-bottom: 6px;">
+                    {{ $product->brand ? $product->brand->name : 'Eccommers Exclusive' }}
+                </div>
+
+                <!-- Wishlist Toggle -->
+                <form action="{{ route('account.wishlist.toggle') }}" method="POST">
+                    @csrf
+                    <input type="hidden" name="product_id" value="{{ $product->id }}">
+                    <button type="submit" class="btn btn-outline btn-sm" style="{{ $inWishlist ? 'color: var(--clay); border-color: var(--clay);' : '' }}">
+                        {{ $inWishlist ? '♥ Wishlisted' : '♡ Add to Wishlist' }}
+                    </button>
+                </form>
             </div>
+
             <h1 style="font-size: 2.2rem; line-height: 1.2; margin-bottom: 12px;">{{ $product->name }}</h1>
             
             <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 20px;">
@@ -84,23 +101,24 @@
                 </template>
             </div>
 
-            <!-- Add to Cart Form -->
-            <form action="{{ route('cart.add') }}" method="POST" style="display: flex; gap: 16px; margin-bottom: 32px;">
-                @csrf
-                <input type="hidden" name="product_id" value="{{ $product->id }}">
-                <input type="hidden" name="variant_id" :value="selectedVariantId">
+            <!-- Single Add to Cart / Added in Cart Button -->
+            @if($inCart)
+                <a href="{{ route('cart.index') }}" class="btn btn-outline btn-block" style="color: var(--green); border-color: var(--green); background: var(--green-dim); font-size: 1.05rem; padding: 14px 24px; margin-bottom: 32px; text-align: center;">
+                    ✓ Added in Cart (View Shopping Cart)
+                </a>
+            @else
+                <form action="{{ route('cart.add') }}" method="POST" style="display: flex; gap: 16px; margin-bottom: 32px;">
+                    @csrf
+                    <input type="hidden" name="product_id" value="{{ $product->id }}">
+                    <input type="hidden" name="variant_id" :value="selectedVariantId">
+                    <input type="hidden" name="quantity" value="1">
 
-                <div style="display: flex; align-items: center; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden;">
-                    <button type="button" @click="if(quantity > 1) quantity--" style="padding: 10px 16px; background: var(--paper); border: none; cursor: pointer;">-</button>
-                    <input type="number" name="quantity" x-model="quantity" readonly style="width: 50px; text-align: center; border: none; font-weight: 600;">
-                    <button type="button" @click="quantity++" style="padding: 10px 16px; background: var(--paper); border: none; cursor: pointer;">+</button>
-                </div>
-
-                <button type="submit" class="btn btn-primary" style="flex: 1;" :disabled="stock <= 0">
-                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
-                    <span>Add to Shopping Cart</span>
-                </button>
-            </form>
+                    <button type="submit" class="btn btn-primary" style="flex: 1; padding: 14px 24px;" :disabled="stock <= 0">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                        <span>Add to Shopping Cart</span>
+                    </button>
+                </form>
+            @endif
 
             <!-- Policy Assurances -->
             <div style="border-top: 1px solid var(--line-soft); padding-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 0.85rem; color: var(--muted);">
