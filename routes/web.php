@@ -1,13 +1,16 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminBlogController;
 use App\Http\Controllers\Admin\AdminCouponController;
 use App\Http\Controllers\Admin\AdminCustomerController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminInventoryController;
 use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AdminProductController;
+use App\Http\Controllers\Admin\AdminReviewController;
 use App\Http\Controllers\Admin\AdminSettingController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BlogController;
 use App\Http\Controllers\CartWishlistController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\CustomerAccountController;
@@ -26,6 +29,10 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/products', [ProductCatalogController::class, 'index'])->name('products.index');
 Route::get('/products/search', [ProductCatalogController::class, 'liveSearch'])->name('products.search');
 Route::get('/products/{slug}', [ProductCatalogController::class, 'show'])->name('products.show');
+
+// Blog Routes
+Route::get('/blog', [BlogController::class, 'index'])->name('blog.index');
+Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
 
 // Cart Routes
 Route::get('/cart', [CartWishlistController::class, 'viewCart'])->name('cart.index');
@@ -78,6 +85,14 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     // Products Management
     Route::resource('products', AdminProductController::class);
+
+    // Reviews Moderation
+    Route::get('/reviews', [AdminReviewController::class, 'index'])->name('reviews.index');
+    Route::post('/reviews/{id}/update-status', [AdminReviewController::class, 'updateStatus'])->name('reviews.update-status');
+    Route::delete('/reviews/{id}', [AdminReviewController::class, 'destroy'])->name('reviews.destroy');
+
+    // Blogs CMS
+    Route::resource('blogs', AdminBlogController::class);
 
     // Inventory Audit
     Route::get('/inventory', [AdminInventoryController::class, 'index'])->name('inventory.index');

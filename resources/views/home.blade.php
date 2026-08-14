@@ -33,6 +33,22 @@
     </div>
 </section>
 
+<!-- Trusted Clients / Brands Showcase Bar -->
+<section style="background-color: var(--white); border-bottom: 1px solid var(--line); padding: 28px 24px;">
+    <div style="max-width: 1320px; margin: 0 auto; text-align: center;">
+        <div style="font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; margin-bottom: 16px;">
+            Trusted by Industry Leaders & Global Clients
+        </div>
+        <div style="display: flex; justify-content: center; align-items: center; gap: 48px; flex-wrap: wrap; opacity: 0.75;">
+            @foreach($brands as $brand)
+                <div style="font-family: 'Playfair Display', serif; font-size: 1.25rem; font-weight: 700; color: var(--ink-soft); display: flex; align-items: center; gap: 8px;">
+                    <span>🛡️</span> {{ $brand->name }}
+                </div>
+            @endforeach
+        </div>
+    </div>
+</section>
+
 <!-- Categories Section -->
 <section style="max-width: 1320px; margin: 60px auto; padding: 0 24px;">
     <div style="text-align: center; margin-bottom: 40px;">
@@ -118,6 +134,62 @@
                     <a href="{{ route('products.show', $product->slug) }}" class="btn btn-primary btn-sm btn-block" style="margin-top: 14px;">
                         View Options
                     </a>
+                </div>
+            </div>
+        @endforeach
+    </div>
+</section>
+
+<!-- Client Testimonials Showcase Section -->
+<section style="background-color: var(--white); border-y: 1px solid var(--line); padding: 70px 24px; margin: 60px 0;">
+    <div style="max-width: 1320px; margin: 0 auto;">
+        <div style="text-align: center; margin-bottom: 48px;">
+            <span style="color: var(--brass); font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;">Client Feedback</span>
+            <h2 style="font-size: 2.4rem; margin-top: 6px;">What Our Corporate & Retail Clients Say</h2>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 28px;">
+            @foreach(\App\Models\Testimonial::where('status', true)->get() as $t)
+                <div style="background-color: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 32px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column;">
+                    <div class="rating-stars" style="margin-bottom: 16px;">
+                        @for($i=0; $i<$t->rating; $i++) ★ @endfor
+                    </div>
+                    <p style="font-size: 1rem; color: var(--ink-soft); font-style: italic; margin-bottom: 24px; flex: 1; line-height: 1.7;">
+                        "{{ $t->content }}"
+                    </p>
+                    <div style="display: flex; align-items: center; gap: 14px; border-top: 1px solid var(--line-soft); padding-top: 16px;">
+                        <img src="{{ $t->client_avatar ?: 'https://via.placeholder.com/50' }}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover;">
+                        <div>
+                            <div style="font-weight: 700; color: var(--ink);">{{ $t->client_name }}</div>
+                            <div style="font-size: 0.82rem; color: var(--muted);">{{ $t->client_title }} • <strong>{{ $t->company_name }}</strong></div>
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    </div>
+</section>
+
+<!-- Recent Blog Articles Section -->
+<section style="max-width: 1320px; margin: 60px auto; padding: 0 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 32px;">
+        <div>
+            <h2 style="font-size: 2.2rem; margin-bottom: 4px;">Latest Blog Articles</h2>
+            <p style="color: var(--muted);">Technical guides, acoustic engineering, and lifestyle trends</p>
+        </div>
+        <a href="{{ route('blog.index') }}" class="btn btn-outline btn-sm">Read All Blogs</a>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 28px;">
+        @foreach(\App\Models\Blog::where('is_published', true)->latest()->take(3)->get() as $b)
+            <div style="background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden;">
+                <div style="height: 180px; background: var(--paper-2); overflow: hidden;">
+                    <img src="{{ $b->featured_image }}" style="width: 100%; height: 100%; object-fit: cover;">
+                </div>
+                <div style="padding: 20px;">
+                    <h3 style="font-size: 1.15rem; margin-bottom: 8px;"><a href="{{ route('blog.show', $b->slug) }}">{{ $b->title }}</a></h3>
+                    <p style="font-size: 0.88rem; color: var(--muted); margin-bottom: 16px;">{{ Str::limit($b->excerpt, 90) }}</p>
+                    <a href="{{ route('blog.show', $b->slug) }}" class="btn btn-outline btn-sm">Read Article →</a>
                 </div>
             </div>
         @endforeach
