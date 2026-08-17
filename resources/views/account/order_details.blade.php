@@ -53,7 +53,8 @@
     <!-- Items Table with Product Review Trigger -->
     <div style="background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); padding: 28px; margin-bottom: 32px;">
         <h3 style="font-size: 1.2rem; margin-bottom: 20px;">Ordered Products & Reviews</h3>
-        <table class="custom-table">
+        <div class="table-responsive">
+            <table class="custom-table">
             <thead>
                 <tr>
                     <th>Product</th>
@@ -89,6 +90,7 @@
                 @endforeach
             </tbody>
         </table>
+        </div>
     </div>
 
     <!-- Perfectly Centered Luxury Review Modal Window -->

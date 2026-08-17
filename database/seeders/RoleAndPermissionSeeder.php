@@ -10,20 +10,17 @@ class RoleAndPermissionSeeder extends Seeder
 {
     public function run(): void
     {
-        $adminRole = Role::create([
-            'name' => 'admin',
+        $adminRole = Role::firstOrCreate(['name' => 'admin'], [
             'display_name' => 'Super Admin',
             'description' => 'Full administrative access to entire platform'
         ]);
 
-        $staffRole = Role::create([
-            'name' => 'staff',
+        $staffRole = Role::firstOrCreate(['name' => 'staff'], [
             'display_name' => 'Staff Member',
             'description' => 'Configurable staff access'
         ]);
 
-        $customerRole = Role::create([
-            'name' => 'customer',
+        $customerRole = Role::firstOrCreate(['name' => 'customer'], [
             'display_name' => 'Customer',
             'description' => 'Standard customer store user'
         ]);
@@ -54,10 +51,14 @@ class RoleAndPermissionSeeder extends Seeder
         ];
 
         foreach ($permissions as $permData) {
-            $perm = Permission::create($permData);
-            $adminRole->permissions()->attach($perm->id);
+            $perm = Permission::firstOrCreate(['name' => $permData['name']], $permData);
+            if (!$adminRole->permissions()->where('permission_id', $perm->id)->exists()) {
+                $adminRole->permissions()->attach($perm->id);
+            }
             if (in_array($permData['name'], ['view_products', 'create_products', 'edit_products', 'view_orders', 'update_orders', 'manage_inventory'])) {
-                $staffRole->permissions()->attach($perm->id);
+                if (!$staffRole->permissions()->where('permission_id', $perm->id)->exists()) {
+                    $staffRole->permissions()->attach($perm->id);
+                }
             }
         }
     }

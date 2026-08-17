@@ -8,10 +8,11 @@
     <h1 style="font-size: 2.2rem; margin-bottom: 32px;">Shopping Cart</h1>
 
     @if($cart && $cart->items->count() > 0)
-        <div style="display: grid; grid-template-columns: 1fr 380px; gap: 36px;">
+        <div class="cart-layout">
             <!-- Cart Items Table -->
             <div>
-                <table class="custom-table">
+                <div class="table-responsive">
+                    <table class="custom-table">
                     <thead>
                         <tr>
                             <th>Product</th>
@@ -57,6 +58,7 @@
                         @endforeach
                     </tbody>
                 </table>
+                </div>
             </div>
 
             <!-- Summary Box -->

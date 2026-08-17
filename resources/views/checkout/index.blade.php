@@ -15,7 +15,7 @@
     <h1 style="font-size: 2.4rem; margin-bottom: 32px;">Secure Order Checkout</h1>
 
     <form @submit.prevent="submitOrder()">
-        <div style="display: grid; grid-template-columns: 1fr 420px; gap: 36px;">
+        <div class="checkout-layout">
             <!-- Left Steps Column -->
             <div>
                 <!-- Step 1: Select Shipping Address -->

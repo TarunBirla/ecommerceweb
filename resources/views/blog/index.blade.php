@@ -17,7 +17,7 @@
         </p>
     </div>
 
-    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 32px;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 28px;">
         @foreach($blogs as $blog)
             <article style="background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; box-shadow: var(--shadow-sm); transition: transform 0.3s var(--ease);"
                      onmouseover="this.style.transform='translateY(-4px)';" onmouseout="this.style.transform='none';">

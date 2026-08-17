@@ -7,7 +7,7 @@
 <div style="max-width: 1320px; margin: 40px auto; padding: 0 24px;">
     <h1 style="font-size: 2.2rem; margin-bottom: 32px;">Order History</h1>
 
-    <div style="display: grid; grid-template-columns: 260px 1fr; gap: 36px;">
+    <div class="catalog-layout">
         <div style="background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; height: fit-content;">
             <ul style="list-style: none; display: flex; flex-direction: column; gap: 4px;">
                 <li><a href="{{ route('account.dashboard') }}" style="display: block; padding: 10px 14px; color: var(--ink-soft);">Dashboard</a></li>
@@ -20,7 +20,8 @@
 
         <div>
             @if($orders->count() > 0)
-                <table class="custom-table">
+                <div class="table-responsive">
+                    <table class="custom-table">
                     <thead>
                         <tr>
                             <th>Order #</th>
@@ -55,6 +56,7 @@
                         @endforeach
                     </tbody>
                 </table>
+                </div>
                 <div style="margin-top: 24px;">{{ $orders->links() }}</div>
             @else
                 <p style="color: var(--muted);">No orders found.</p>

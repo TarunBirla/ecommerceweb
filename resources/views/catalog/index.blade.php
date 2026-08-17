@@ -10,7 +10,7 @@
         <a href="{{ route('home') }}">Home</a> &nbsp;/&nbsp; <span style="color: var(--ink); font-weight: 600;">Product Catalog</span>
     </div>
 
-    <div style="display: grid; grid-template-columns: 280px 1fr; gap: 36px;">
+    <div class="catalog-layout">
         <!-- Filters Sidebar -->
         <aside style="background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; height: fit-content;">
             <form action="{{ route('products.index') }}" method="GET">

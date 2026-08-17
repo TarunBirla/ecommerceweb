@@ -18,7 +18,7 @@
     </div>
 
     <!-- Product Main Grid -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 48px; background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); padding: 36px; box-shadow: var(--shadow-sm); margin-bottom: 48px;">
+    <div class="product-details-grid" style="background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); padding: 36px; box-shadow: var(--shadow-sm); margin-bottom: 48px;">
         <!-- Images Gallery -->
         <div>
             <div style="height: 480px; background-color: var(--paper-2); border-radius: var(--radius); overflow: hidden; margin-bottom: 16px; position: relative;">
